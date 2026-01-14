@@ -51,7 +51,7 @@ h2 {
     padding-top: 10px;
 }
 
-.readonly pre {
+pre.readonly {
     background: #1e1e1e;
     color: #eee;
     padding-bottom: 0px;
