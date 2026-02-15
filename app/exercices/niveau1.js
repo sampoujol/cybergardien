@@ -16,6 +16,7 @@ Si une valeur n’est pas un nombre, appelle echoue("Saisie invalide").
   { "args": ["1","2"], "attendu": 3 },
   { "args": ["abc","5"], "erreur": true }
 ]
+@testable calculerTotal
 */
 
 function calculerTotal(prix1, prix2) {

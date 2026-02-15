@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="fr">
+    <head>
+    <meta charset="UTF-8">
+    <title>Tests Cyber Gardien</title>
+<style>
+    body { font-family: sans-serif; margin: 20px; }
+    .ok { color: green; }
+    .fail { color: red; }
+</style>
+</head>
+<body>
+<h1>Tests Cyber Gardien</h1>
+<div id="results"></div>
+
+<script type="module">
+    import { runTestsExtractFunction } from './test_extractFunction.js';
+
+    const results = runTestsExtractFunction();
+    const container = document.getElementById("results");
+
+    results.forEach(r => {
+    const div = document.createElement("div");
+    if(r.ok){
+    div.className = "ok";
+    div.textContent = `✅ ${r.name}`;
+} else {
+    div.className = "fail";
+    div.textContent = `❌ ${r.name} ${r.error ? "- "+r.error : ""}`;
+}
+    container.appendChild(div);
+});
+</script>
+</body>
+</html>

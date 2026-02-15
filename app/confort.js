@@ -1,15 +1,19 @@
-let contexte = null;
+// Alias français de fonctions natives et utilitaires
+export const ALIASES = {
+    mauvaisNombre: isNaN,
+    nombre: Number
+};
 
-function setContexte(ctx) {
-    contexte = ctx;
-}
+// Crée un jeu d'alias + fonctions d'affichage spécifique à une zone output
+export function createAliases(outputElement = null) {
+    const affiche = outputElement
+        ? msg => { outputElement.textContent += msg + "\n"; }
+        : console.log;
 
-function affiche(msg) {
-    if (!contexte) return;
-    contexte.output.textContent += msg + "\n";
-}
+    const echoue = msg => {
+        affiche("❌ " + msg);
+        throw new Error(msg);
+    };
 
-function echoue(msg) {
-    affiche("❌ " + msg);
-    throw new Error(msg);
+    return { ...ALIASES, affiche, echoue };
 }

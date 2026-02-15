@@ -10,17 +10,26 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js"></script>
 
-    <!-- Cyber Gardien -->
+    <!-- Cyber Gardien CSS & scripts utilitaires -->
     <link rel="stylesheet" href="style.css">
     <script src="confort.js"></script>
-    <script src="engine.js" defer></script>
+
+    <!-- Module principal (UI + moteur via imports) -->
+    <script type="module">
+        import { chargerExercices } from './app/ui.js';
+        window.addEventListener("DOMContentLoaded", chargerExercices);
+    </script>
 </head>
 <body>
 
-<h1>🛡 Cyber Gardien</h1>
-<h2>Tuer les bugs dans l'œuf</h2>
+<header>
+    <h1>🛡 Cyber Gardien</h1>
+    <h2>Tuer les bugs dans l'œuf</h2>
+</header>
 
-<div id="zone-exercices"></div>
+<main>
+    <div id="zone-exercices"></div>
+</main>
 
 </body>
 </html>
