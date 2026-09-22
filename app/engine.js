@@ -1,4 +1,4 @@
-import { createAliases } from './confort.js';
+import { createAliases, Echec } from './confort.js';
 
 // Exécute du code avec les alias en portée, puis la suite éventuelle (ex: un return)
 function executer(code, aliases, suite = "") {
@@ -26,11 +26,44 @@ export function runExo(code, main = "", outputElement = null) {
     try {
         executer(code + "\n" + main, aliases);
     } catch (e) {
-        aliases.affiche(`💥 Erreur : ${e.message}`);
+        if (e instanceof Echec) aliases.affiche(`❌ ${e.message}`);
+        else aliases.affiche(`💥 Erreur : ${e.message}`);
     }
 }
 
-// Exécute les tests unitaires d'un exercice sur la fonction nommée
+// Affiche les chaînes entre guillemets pour que l'élève distingue "15" de 15
+function formater(valeur) {
+    if (typeof valeur === "string" || (typeof valeur === "object" && valeur !== null)) return JSON.stringify(valeur);
+    return String(valeur);
+}
+
+function decrireErreur(e) {
+    return e instanceof Error ? `${e.name} : ${e.message}` : String(e);
+}
+
+// Exécute un cas de test et renvoie { ok, message }
+function juger(f, nom, t) {
+    const cas = `${nom}(${t.args.map(formater).join(", ")})`;
+    let r;
+    try {
+        r = f(...t.args);
+    } catch (e) {
+        if (e instanceof Echec) {
+            return t.erreur
+                ? { ok: true, message: `✅ ${cas} refusé : ${e.message}` }
+                : { ok: false, message: `❌ ${cas} refusé à tort : ${e.message}` };
+        }
+        return t.erreur
+            ? { ok: false, message: `💥 ${cas} plante au lieu d'appeler echoue (${decrireErreur(e)})` }
+            : { ok: false, message: `💥 ${cas} plante (${decrireErreur(e)})` };
+    }
+    if (t.erreur) return { ok: false, message: `❌ ${cas} → ${formater(r)} au lieu d'être refusé` };
+    if (r === t.attendu) return { ok: true, message: `✅ ${cas} → ${formater(r)}` };
+    return { ok: false, message: `⚠️ ${cas} → ${formater(r)} au lieu de ${formater(t.attendu)}` };
+}
+
+// Exécute les tests unitaires d'un exercice sur la fonction nommée, affiche
+// un verdict par cas puis le bilan. Renvoie un résultat par cas : { args, ok, message }
 export function testExo(code, nom, tests, outputElement = null) {
     const aliases = createAliases(outputElement);
 
@@ -38,18 +71,21 @@ export function testExo(code, nom, tests, outputElement = null) {
     try {
         f = chargerFonction(code, nom, aliases);
     } catch (e) {
-        return aliases.affiche("💥 " + e.message);
+        aliases.affiche("💥 " + e.message);
+        return [];
     }
 
-    for (let t of tests) {
-        try {
-            const r = f(...t.args);
-            if (t.erreur) aliases.affiche(`❌ Ces paramètres ne sont pas acceptables : ${JSON.stringify(t.args)}`);
-            else if (r === t.attendu) aliases.affiche(`✅ ${t.args.join(", ")} --> ${t.attendu}`);
-            else aliases.affiche(`⚠️ ${r} retourné au lieu de ${t.attendu}`);
-        } catch {
-            if (t.erreur) aliases.affiche("✅ Erreur détectée comme attendu");
-            else aliases.affiche("❌ Erreur inattendue");
-        }
+    const resultats = [];
+    for (const t of tests) {
+        const { ok, message } = juger(f, nom, t);
+        aliases.affiche(message);
+        resultats.push({ args: t.args, ok, message });
     }
+
+    const reussis = resultats.filter(r => r.ok).length;
+    const total = resultats.length;
+    aliases.affiche("");
+    const s = total > 1 ? "s" : "";
+    aliases.affiche(`${reussis === total ? "🎉" : "📊"} Bilan : ${reussis}/${total} test${s} réussi${s}`);
+    return resultats;
 }

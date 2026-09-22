@@ -2,8 +2,7 @@ import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { chargerFonction, runExo, testExo } from '../app/engine.js';
 import { createAliases } from '../app/confort.js';
-import { parserExercice } from '../app/utils.js';
-import { fausseSortie, lignes, lireFichier } from './helpers.js';
+import { fausseSortie, lignes } from './helpers.js';
 
 describe("chargerFonction", () => {
     const charger = (code, nom) => chargerFonction(code, nom, createAliases(fausseSortie()));
@@ -91,6 +90,12 @@ describe("runExo", () => {
         assert.deepEqual(lignes(sortie), ["dans f", "4"]);
     });
 
+    test("echoue affiche le refus, sans 💥", () => {
+        const sortie = fausseSortie();
+        runExo('function f() { echoue("Saisie invalide"); }', "f();", sortie);
+        assert.deepEqual(lignes(sortie), ["❌ Saisie invalide"]);
+    });
+
     test("une erreur est capturée et affichée", () => {
         const sortie = fausseSortie();
         assert.doesNotThrow(() => runExo(code, "inconnue();", sortie));
@@ -112,90 +117,129 @@ describe("runExo", () => {
 
 describe("testExo", () => {
     const addition = "function add(a, b) { return a + b; }";
+    const refus = 'function f(a) { echoue("Saisie invalide"); }';
+
+    // Verdicts seuls, sans la ligne vide ni le bilan
+    const verdicts = sortie => lignes(sortie).slice(0, -1);
+    const bilan = sortie => lignes(sortie).at(-1);
 
     test("résultat correct", () => {
         const sortie = fausseSortie();
         testExo(addition, "add", [{ args: [1, 2], attendu: 3 }], sortie);
-        assert.deepEqual(lignes(sortie), ["✅ 1, 2 --> 3"]);
+        assert.deepEqual(verdicts(sortie), ["✅ add(1, 2) → 3"]);
     });
 
-    test("mauvais résultat", () => {
+    test("mauvais résultat, chaînes entre guillemets", () => {
         const sortie = fausseSortie();
         testExo(addition, "add", [{ args: ["1", "2"], attendu: 3 }], sortie);
-        assert.deepEqual(lignes(sortie), ["⚠️ 12 retourné au lieu de 3"]);
+        assert.deepEqual(verdicts(sortie), ['⚠️ add("1", "2") → "12" au lieu de 3']);
     });
 
-    test("erreur attendue et levée", () => {
+    test("tableaux et valeurs spéciales", () => {
         const sortie = fausseSortie();
-        testExo('function f(a) { throw new Error("non"); }', "f", [{ args: [1], erreur: true }], sortie);
-        assert.deepEqual(lignes(sortie), ["✅ Erreur détectée comme attendu"]);
+        testExo("function f(t) { return t.length ? t : undefined; }", "f", [
+            { args: [[1, 2]], attendu: 0 },
+            { args: [[]], attendu: 0 }
+        ], sortie);
+        assert.deepEqual(verdicts(sortie), [
+            "⚠️ f([1,2]) → [1,2] au lieu de 0",
+            "⚠️ f([]) → undefined au lieu de 0"
+        ]);
     });
 
-    test("erreur attendue mais valeur renvoyée", () => {
+    test("refus attendu obtenu avec echoue", () => {
+        const sortie = fausseSortie();
+        testExo(refus, "f", [{ args: ["abc"], erreur: true }], sortie);
+        assert.deepEqual(verdicts(sortie), ['✅ f("abc") refusé : Saisie invalide']);
+    });
+
+    test("refus attendu mais valeur renvoyée", () => {
         const sortie = fausseSortie();
         testExo(addition, "add", [{ args: [1, 2], erreur: true }], sortie);
-        assert.deepEqual(lignes(sortie), ["❌ Ces paramètres ne sont pas acceptables : [1,2]"]);
+        assert.deepEqual(verdicts(sortie), ["❌ add(1, 2) → 3 au lieu d'être refusé"]);
     });
 
-    test("erreur inattendue", () => {
+    test("refus attendu mais plantage : ne compte pas comme réussi", () => {
+        const sortie = fausseSortie();
+        const [r] = testExo("function f(s) { return s.length; }", "f", [{ args: [null], erreur: true }], sortie);
+        assert.equal(r.ok, false);
+        assert.match(verdicts(sortie)[0], /^💥 f\(null\) plante au lieu d'appeler echoue \(TypeError : /);
+    });
+
+    test("refusé à tort", () => {
+        const sortie = fausseSortie();
+        testExo(refus, "f", [{ args: [1], attendu: 1 }], sortie);
+        assert.deepEqual(verdicts(sortie), ["❌ f(1) refusé à tort : Saisie invalide"]);
+    });
+
+    test("plantage sur un cas valide", () => {
         const sortie = fausseSortie();
         testExo('function f(a) { throw new Error("oups"); }', "f", [{ args: [1], attendu: 1 }], sortie);
-        assert.deepEqual(lignes(sortie), ["❌ Erreur inattendue"]);
+        assert.deepEqual(verdicts(sortie), ["💥 f(1) plante (Error : oups)"]);
     });
 
-    test("un verdict par cas, dans l'ordre", () => {
+    test("echoue n'affiche pas de ligne supplémentaire", () => {
+        const sortie = fausseSortie();
+        testExo(refus, "f", [{ args: [1], erreur: true }], sortie);
+        assert.equal(lignes(sortie).length, 2);
+    });
+
+    test("un verdict par cas, dans l'ordre, puis le bilan", () => {
         const sortie = fausseSortie();
         testExo(addition, "add", [
             { args: [1, 2], attendu: 3 },
             { args: [2, 2], attendu: 5 }
         ], sortie);
-        assert.deepEqual(lignes(sortie), ["✅ 1, 2 --> 3", "⚠️ 4 retourné au lieu de 5"]);
+        assert.deepEqual(lignes(sortie), [
+            "✅ add(1, 2) → 3",
+            "⚠️ add(2, 2) → 4 au lieu de 5",
+            "📊 Bilan : 1/2 tests réussis"
+        ]);
     });
 
-    test("fonction introuvable", () => {
+    test("bilan complet", () => {
         const sortie = fausseSortie();
-        testExo("const x = 1;", "f", [], sortie);
+        testExo(addition, "add", [{ args: [1, 2], attendu: 3 }, { args: [0, 0], attendu: 0 }], sortie);
+        assert.equal(bilan(sortie), "🎉 Bilan : 2/2 tests réussis");
+    });
+
+    test("bilan au singulier", () => {
+        const sortie = fausseSortie();
+        testExo(addition, "add", [{ args: [1, 2], attendu: 3 }], sortie);
+        assert.equal(bilan(sortie), "🎉 Bilan : 1/1 test réussi");
+    });
+
+    test("le bilan est précédé d'une ligne vide", () => {
+        const sortie = fausseSortie();
+        testExo(addition, "add", [{ args: [1, 2], attendu: 3 }], sortie);
+        assert.ok(sortie.textContent.endsWith("→ 3\n\n🎉 Bilan : 1/1 test réussi\n"));
+    });
+
+    test("renvoie un résultat par cas", () => {
+        const resultats = testExo(addition, "add", [
+            { args: [1, 2], attendu: 3 },
+            { args: [1, 2], attendu: 4 },
+            { args: [1, 2], erreur: true }
+        ], fausseSortie());
+        assert.deepEqual(resultats.map(r => r.ok), [true, false, false]);
+        assert.deepEqual(resultats[0], { args: [1, 2], ok: true, message: "✅ add(1, 2) → 3" });
+    });
+
+    test("fonction introuvable : pas de bilan", () => {
+        const sortie = fausseSortie();
+        assert.deepEqual(testExo("const x = 1;", "f", [], sortie), []);
         assert.deepEqual(lignes(sortie), ["💥 Fonction f introuvable"]);
     });
 
     test("les alias sont disponibles dans la fonction testée", () => {
         const sortie = fausseSortie();
         testExo("function f(a, b) { return nombre(a) + nombre(b); }", "f", [{ args: ["10", "5"], attendu: 15 }], sortie);
-        assert.deepEqual(lignes(sortie), ["✅ 10, 5 --> 15"]);
+        assert.deepEqual(verdicts(sortie), ['✅ f("10", "5") → 15']);
     });
 
-    test("echoue est réellement appelé sur un cas d'erreur", () => {
+    test("affiche de l'élève reste visible pendant les tests", () => {
         const sortie = fausseSortie();
-        testExo('function f(a) { echoue("Saisie invalide"); }', "f", [{ args: [1], erreur: true }], sortie);
-        // Sans l'alias, f lève une ReferenceError et le test passe par accident
-        assert.ok(sortie.textContent.includes("❌ Saisie invalide"));
-    });
-});
-
-describe("niveau1 (intégration)", () => {
-    const exo = parserExercice(lireFichier("app/exercices/niveau1.js"), 0);
-
-    function verdicts(codeEleve) {
-        const sortie = fausseSortie();
-        testExo(exo.before + codeEleve + exo.after, exo.testable, exo.tests, sortie);
-        return lignes(sortie).filter(l => !l.startsWith("❌ Saisie invalide"));
-    }
-
-    test("le code de départ échoue au moins un test", () => {
-        const v = verdicts(exo.student);
-        assert.equal(v.length, exo.tests.length);
-        assert.ok(v.some(l => !l.startsWith("✅")));
-    });
-
-    test("une solution correcte passe tous les tests", () => {
-        const solution = `
-        const a = nombre(prix1), b = nombre(prix2);
-        if (mauvaisNombre(a) || mauvaisNombre(b)) echoue("Saisie invalide");
-        return a + b;`;
-        assert.deepEqual(verdicts(solution), [
-            "✅ 10, 5 --> 15",
-            "✅ 1, 2 --> 3",
-            "✅ Erreur détectée comme attendu"
-        ]);
+        testExo('function f(a) { affiche("debug " + a); return a; }', "f", [{ args: [7], attendu: 7 }], sortie);
+        assert.deepEqual(verdicts(sortie), ["debug 7", "✅ f(7) → 7"]);
     });
 });

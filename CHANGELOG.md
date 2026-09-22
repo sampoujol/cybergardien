@@ -7,7 +7,13 @@ Le format s'inspire de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) 
 ## [Non publié]
 
 ### Ajouté
-- Suite de tests du moteur avec le runner intégré à Node.js (`npm test`) : parsing, alias, exécution, chaque verdict de `testExo`, test d'intégration sur `niveau1.js`.
+- Trois nouveaux exercices : `niveau2.js` (bornes d'un choix de menu), `niveau3.js` (format d'un code PIN), `niveau4.js` (moyenne d'une liste : liste vide et notes hors limites).
+- Alias `estEntier` (`Number.isInteger`).
+- Bilan en fin de tests : `🎉 Bilan : 8/8 tests réussis` ou `📊 Bilan : 5/8 tests réussis`.
+- `testExo` renvoie un résultat par cas (`{ args, ok, message }`).
+- Classe `Echec`, levée par `echoue`, pour distinguer un refus volontaire d'un plantage.
+- `tests/exercices.test.js` : chaque exercice a une solution de référence ; le code de départ doit échouer au moins un test et la solution doit tous les passer.
+- Suite de tests du moteur avec le runner intégré à Node.js (`npm test`) : parsing, alias, exécution, chaque verdict de `testExo`.
 - Vérification automatique de chaque exercice listé dans `config.json` : fichier présent, format lisible, cas de test bien formés, fonction `@testable` existante.
 - Vérification des fichiers référencés par `cybergardien.html`.
 - `chargerFonction(code, nom, aliases)` : exécute le code de l'exercice et renvoie la fonction nommée, en laissant le moteur JavaScript lire le code.
@@ -18,6 +24,9 @@ Le format s'inspire de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) 
 - Ce fichier `CHANGELOG.md`.
 
 ### Modifié
+- Verdicts de test sur une seule ligne, rappelant l'appel : `⚠️ calculerTotal("10", "5") → "105" au lieu de 15`. Les chaînes sont entre guillemets, les tableaux en JSON.
+- `echoue` n'affiche plus rien lui-même : le refus apparaît une seule fois, dans le verdict (Tester) ou sous la forme `❌ message` (Lancer). Fin des lignes contradictoires « ❌ Saisie invalide » suivies de « ✅ Erreur détectée ».
+- **⚠️ Incompatible** : un cas `"erreur": true` n'est réussi que si la fonction appelle `echoue` ; un plantage (`TypeError`…) est désormais compté comme un échec.
 - **⚠️ Incompatible** : `@testable` est désormais obligatoire et désigne réellement la fonction testée (elle était auparavant ignorée au profit de la première fonction du fichier).
 - **⚠️ Incompatible** : `testExo(code, tests, sortie)` devient `testExo(code, nom, tests, sortie)`.
 - `runExo` et `testExo` partagent le même chemin d'exécution.

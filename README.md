@@ -60,13 +60,17 @@ cybergardien/
 │   ├── utils.js             # Parsing du format d'exercice
 │   ├── confort.js           # Alias pédagogiques + affiche / echoue
 │   └── exercices/
-│       └── niveau1.js
+│       ├── niveau1.js       # Conversion des saisies
+│       ├── niveau2.js       # Vérification des bornes (menu)
+│       ├── niveau3.js       # Validation de format (code PIN)
+│       └── niveau4.js       # Cas limites sur une liste (moyenne)
 ├── tests/                   # Tests du moteur (node --test)
 │   ├── helpers.js           # Utilitaires partagés par les tests
 │   ├── utils.test.js
 │   ├── confort.test.js
 │   ├── engine.test.js
-│   └── app.test.js
+│   ├── app.test.js
+│   └── exercices.test.js    # Solutions de référence des exercices
 ├── package.json             # Script npm test
 ├── CHANGELOG.md             # Historique des versions
 └── README.md
@@ -95,8 +99,9 @@ cybergardien/
    }
    ```
 
-3. Lancer `npm test` : chaque exercice de `config.json` est vérifié automatiquement (voir [Tests du moteur](#-tests-du-moteur)).
-4. Recharger la page. Les exercices s'affichent dans l'ordre de la liste.
+3. Ajouter sa solution de référence (le contenu attendu de la zone élève) dans `SOLUTIONS`, en tête de `tests/exercices.test.js`.
+4. Lancer `npm test` : chaque exercice de `config.json` est vérifié automatiquement (voir [Tests du moteur](#-tests-du-moteur)).
+5. Recharger la page. Les exercices s'affichent dans l'ordre de la liste.
 
 Si un exercice est mal formé (tag manquant, JSON invalide, fichier introuvable…), la page affiche à sa place une section rouge avec le message d'erreur ; les autres exercices restent utilisables.
 
@@ -167,7 +172,7 @@ La fonction est appelée avec `args` ; le résultat doit être **strictement ég
 { "args": ["abc", "5"], "erreur": true }
 ```
 
-La fonction doit lever une erreur (typiquement via `echoue(...)`).
+La fonction doit refuser la saisie en appelant `echoue(...)`. Un plantage (par exemple une `TypeError`) n'est **pas** considéré comme un refus.
 
 Comme c'est du JSON, les valeurs `undefined`, `NaN` ou les fonctions ne sont pas exprimables.
 
@@ -192,16 +197,18 @@ Optionnel. Tout ce qui suit `/* @main */` (écrit exactement ainsi) est exécut�
 | Nom                  | Équivalent / effet |
 |----------------------|--------------------|
 | `affiche(msg)`       | Écrit une ligne dans la zone de sortie de l'exercice. |
-| `echoue(msg)`        | Affiche `❌ msg` puis lève une erreur. |
+| `echoue(msg)`        | Refuse la saisie : interrompt la fonction. Tester l'affiche comme un refus, Lancer affiche `❌ msg`. |
 | `nombre(x)`          | `Number(x)` |
 | `mauvaisNombre(x)`   | `isNaN(x)` |
+| `estEntier(x)`       | `Number.isInteger(x)` |
 
 Pour ajouter un alias, compléter `ALIASES` dans `app/confort.js` :
 
 ```js
 export const ALIASES = {
     mauvaisNombre: isNaN,
-    nombre: Number
+    nombre: Number,
+    estEntier: Number.isInteger
 };
 ```
 
@@ -213,17 +220,23 @@ export const ALIASES = {
 
 1. recompose le code : partie avant + code de l'élève + partie après ;
 2. l'exécute suivi du bloc `@main` via `new Function`, les alias étant rendus accessibles par un `with (aliases)` ;
-3. affiche toute erreur sous la forme `💥 Erreur : ...`.
+3. affiche un refus (`echoue`) sous la forme `❌ message`, et toute autre erreur sous la forme `💥 Erreur : ...`.
 
-**🧪 Tester** (`testExo`) : exécute le même code, **sans** le bloc `@main`, et récupère la fonction nommée par `@testable` (`chargerFonction`). Le code n'est jamais découpé à la main : c'est le moteur JavaScript du navigateur qui le lit, donc chaînes, commentaires et expressions régulières sont gérés correctement. Chaque cas est ensuite exécuté :
+**🧪 Tester** (`testExo`) : exécute le même code, **sans** le bloc `@main`, et récupère la fonction nommée par `@testable` (`chargerFonction`). Le code n'est jamais découpé à la main : c'est le moteur JavaScript du navigateur qui le lit, donc chaînes, commentaires et expressions régulières sont gérés correctement. Chaque cas produit une seule ligne, qui rappelle l'appel effectué :
 
 | Affichage | Signification |
 |-----------|---------------|
-| `✅ 10, 5 --> 15`                           | Résultat correct. |
-| `⚠️ 105 retourné au lieu de 15`             | Mauvais résultat. |
-| `✅ Erreur détectée comme attendu`           | Une erreur était attendue et a bien été levée. |
-| `❌ Ces paramètres ne sont pas acceptables` | Une erreur était attendue mais la fonction a renvoyé une valeur. |
-| `❌ Erreur inattendue`                       | La fonction a levé une erreur sur un cas valide. |
+| `✅ calculerTotal("10", "5") → 15`                        | Résultat correct. |
+| `⚠️ calculerTotal("10", "5") → "105" au lieu de 15`       | Mauvais résultat. |
+| `✅ calculerTotal("abc", "5") refusé : Saisie invalide`   | Refus attendu, obtenu avec `echoue`. |
+| `❌ calculerTotal("abc", "5") → "abc5" au lieu d'être refusé` | Refus attendu, mais la fonction a renvoyé une valeur. |
+| `❌ calculerTotal("1", "2") refusé à tort : Saisie invalide` | La fonction a refusé une saisie valide. |
+| `💥 f(null) plante au lieu d'appeler echoue (TypeError : …)` | Refus attendu, mais la fonction a planté : un plantage ne compte pas comme un refus. |
+| `💥 f(1) plante (Error : …)`                               | La fonction a planté sur un cas valide. |
+
+Les chaînes sont affichées entre guillemets pour distinguer `"15"` de `15`, les tableaux au format JSON. Les messages de `affiche` écrits par l'élève restent visibles, juste avant le verdict du cas concerné.
+
+Un bilan termine la sortie : `🎉 Bilan : 3/3 tests réussis` quand tout passe, `📊 Bilan : 1/3 tests réussis` sinon.
 
 ---
 
@@ -266,8 +279,9 @@ Le détail de chaque échec (valeur obtenue / attendue) est affiché en fin de r
 |--------------------------|---------|
 | `tests/utils.test.js`    | Parsing : `extraire`, `collapseTags`, `parserExercice` (dont les messages d'erreur). |
 | `tests/confort.test.js`  | Alias, `affiche` et `echoue`. |
-| `tests/engine.test.js`   | `chargerFonction`, `runExo`, chaque verdict de `testExo`, et un test d'intégration sur `niveau1.js` (le code de départ échoue, une solution correcte réussit). |
+| `tests/engine.test.js`   | `chargerFonction`, `runExo`, chaque verdict de `testExo` et les résultats qu'il renvoie. |
 | `tests/app.test.js`      | Fichiers référencés par `cybergardien.html`, validité de chaque exercice listé dans `config.json`. |
+| `tests/exercices.test.js`| Pour chaque exercice : une solution de référence existe, le code de départ échoue au moins un test, la solution les passe tous. |
 | `tests/helpers.js`       | `fausseSortie()`, `lignes(sortie)`, `lireFichier(chemin)`. |
 
 `ui.js` n'est pas testé : il dépend du DOM et de CodeMirror.
@@ -286,7 +300,7 @@ describe("testExo", () => {
     test("résultat correct", () => {
         const sortie = fausseSortie();          // remplace le <pre class="output">
         testExo("function add(a, b) { return a + b; }", "add", [{ args: [1, 2], attendu: 3 }], sortie);
-        assert.deepEqual(lignes(sortie), ["✅ 1, 2 --> 3"]);
+        assert.deepEqual(lignes(sortie), ["✅ add(1, 2) → 3", "🎉 Bilan : 1/1 test réussi"]);
     });
 });
 ```

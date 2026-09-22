@@ -1,13 +1,20 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
-import { ALIASES, createAliases } from '../app/confort.js';
-import { fausseSortie, lignes } from './helpers.js';
+import { ALIASES, Echec, createAliases } from '../app/confort.js';
+import { fausseSortie } from './helpers.js';
 
 describe("ALIASES", () => {
     test("nombre et mauvaisNombre", () => {
         assert.equal(ALIASES.nombre("42"), 42);
         assert.equal(ALIASES.mauvaisNombre("abc"), true);
         assert.equal(ALIASES.mauvaisNombre("12"), false);
+    });
+
+    test("estEntier", () => {
+        assert.equal(ALIASES.estEntier(3), true);
+        assert.equal(ALIASES.estEntier(2.5), false);
+        assert.equal(ALIASES.estEntier(NaN), false);
+        assert.equal(ALIASES.estEntier("3"), false);
     });
 });
 
@@ -27,11 +34,11 @@ describe("createAliases", () => {
         assert.equal(sortie.textContent, "bonjour\n42\n");
     });
 
-    test("echoue affiche le message puis lève une erreur", () => {
+    test("echoue lève un Echec sans rien afficher", () => {
         const sortie = fausseSortie();
         const { echoue } = createAliases(sortie);
-        assert.throws(() => echoue("Saisie invalide"), { message: "Saisie invalide" });
-        assert.deepEqual(lignes(sortie), ["❌ Saisie invalide"]);
+        assert.throws(() => echoue("Saisie invalide"), e => e instanceof Echec && e.message === "Saisie invalide");
+        assert.equal(sortie.textContent, "");
     });
 
     test("chaque zone de sortie est indépendante", () => {
