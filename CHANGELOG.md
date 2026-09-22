@@ -6,6 +6,8 @@ Le format s'inspire de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) 
 
 ## [Non publié]
 
+## [0.4.0] - 2026-09-22
+
 ### Ajouté
 - Exercices avec base de données : tag `@sql`, SQLite en WebAssembly ([sql.js](https://sql.js.org) 1.14.2, copié dans `app/vendor/sql.js/`), chargé seulement si un exercice en a besoin.
 - Alias `requete(sql)` et `requetePreparee(sql, valeurs)` ; base neuve pour chaque cas de test ; Lancer affiche chaque requête exécutée ; les tables sont affichées à l'élève.
@@ -72,7 +74,8 @@ Le format s'inspire de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) 
 ### Ajouté
 - Première version : page `cybergardien.html`, feuille de style, alias pédagogiques (`confort.js`).
 
-[Non publié]: https://github.com/sampoujol/cybergardien/compare/v0.3.0...HEAD
+[Non publié]: https://github.com/sampoujol/cybergardien/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/sampoujol/cybergardien/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/sampoujol/cybergardien/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/sampoujol/cybergardien/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/sampoujol/cybergardien/releases/tag/v0.1.0
