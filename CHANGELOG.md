@@ -6,6 +6,10 @@ Le format s'inspire de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) 
 
 ## [Non publié]
 
+### Ajouté
+- Intégration continue (GitHub Actions) : `npm test` sous Node.js 22 et 24 à chaque push et pull request, badge dans le README.
+- Publication automatique de `app/` sur GitHub Pages quand les tests passent sur `main` ; les solutions de référence ne sont pas publiées.
+
 ## [0.4.0] - 2026-09-22
 
 ### Ajouté

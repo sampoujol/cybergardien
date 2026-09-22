@@ -1,5 +1,7 @@
 # 🛡️ CyberGardien
 
+[![CI](https://github.com/sampoujol/cybergardien/actions/workflows/ci.yml/badge.svg)](https://github.com/sampoujol/cybergardien/actions/workflows/ci.yml)
+
 > *Tuer les bugs dans l'œuf.*
 > Plateforme pédagogique d'exercices JavaScript interactifs, 100 % navigateur, sans backend.
 
@@ -8,7 +10,9 @@ L'élève lit un mémo et une consigne, corrige une fonction dans un éditeur de
 - **▶ Lancer** : exécute le programme complet (avec `prompt`, `affiche`…) ;
 - **🧪 Tester** : lance les tests automatiques définis par l'enseignant et affiche le verdict de chaque cas.
 
-Chaque exercice est un simple fichier `.js` annoté : pas de build, pas de base de données.
+Chaque exercice est un simple fichier `.js` annoté : pas de build, pas de serveur applicatif.
+
+**▶ Essayer en ligne : <https://sampoujol.github.io/cybergardien/cybergardien.html>**
 
 ---
 
@@ -23,6 +27,7 @@ Chaque exercice est un simple fichier `.js` annoté : pas de build, pas de base 
 - [Fonctionnement du moteur](#-fonctionnement-du-moteur)
 - [Tests du moteur](#-tests-du-moteur)
 - [Limites connues](#-limites-connues)
+- [Intégration continue et publication](#-intégration-continue-et-publication)
 - [Roadmap](#-roadmap)
 - [Historique](#-historique)
 
@@ -40,7 +45,7 @@ python3 -m http.server 8000     # ou : npx serve -l 8000
 
 Puis ouvrir <http://localhost:8000/app/cybergardien.html>.
 
-Seul le dossier `app/` est nécessaire au fonctionnement de l'application : c'est lui qu'il faut publier sur un serveur web (Apache, etc.).
+Seul le dossier `app/` est nécessaire au fonctionnement de l'application : c'est lui qu'il faut publier sur un serveur web (Apache, etc.). Il est aussi publié automatiquement sur GitHub Pages, voir [Intégration continue et publication](#-intégration-continue-et-publication).
 
 Pour lancer les tests du moteur, voir [Tests du moteur](#-tests-du-moteur).
 
@@ -76,6 +81,7 @@ cybergardien/
 │   ├── sgbd.test.js
 │   ├── app.test.js
 │   └── exercices.test.js    # Solutions de référence des exercices
+├── .github/workflows/ci.yml # Tests et publication sur GitHub (Actions)
 ├── package.json             # Script npm test
 ├── CHANGELOG.md             # Historique des versions
 └── README.md
@@ -379,13 +385,27 @@ Les exercices listés dans `app/config.json` sont vérifiés automatiquement par
 
 ---
 
+## 🤖 Intégration continue et publication
+
+Le workflow `.github/workflows/ci.yml` s'exécute sur GitHub à chaque push et à chaque pull request :
+
+1. **Tests** : `npm test` sous Node.js 22 et 24. Le résultat s'affiche à côté de chaque commit (✅ / ❌) et dans le badge en haut de ce README.
+2. **Publication** : si les tests passent sur `main`, le dossier `app/` est publié sur GitHub Pages, à l'adresse <https://sampoujol.github.io/cybergardien/cybergardien.html>. Un commit qui casse les tests n'est donc jamais mis en ligne.
+
+Seul `app/` est publié : les solutions de référence de `tests/exercices.test.js` ne sont pas accessibles aux élèves.
+
+Mise en place, une seule fois : dans le dépôt GitHub, *Settings → Pages → Build and deployment → Source : **GitHub Actions***. GitHub Pages nécessite un dépôt public, ou un compte payant pour un dépôt privé. Sans Pages, les tests fonctionnent quand même, seule l'étape de publication échoue.
+
+Le workflow peut aussi être relancé à la main depuis l'onglet *Actions* (*Run workflow*).
+
+---
+
 ## 🗺️ Roadmap
 
 - [ ] Protection contre les boucles infinies (Web Worker)
 - [ ] Comparaison profonde d'objets et de tableaux
 - [ ] Export des résultats en JSON
 - [ ] Support TypeScript
-- [ ] Intégration CI
 
 ---
 
