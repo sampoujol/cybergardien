@@ -1,6 +1,5 @@
 import { runExo, testExo } from './engine.js';
 import { parserExercice, collapseTags } from './utils.js';
-import { createAliases } from './confort.js';
 
 export function creerUI(exo) {
     const s = document.createElement("section");
@@ -14,7 +13,7 @@ export function creerUI(exo) {
         <div class="code">
             <pre class="readonly">${cleanBefore}</pre>
             <textarea id="ta${exo.num}">${exo.student.trim()}</textarea>
-            <pre class="readonly">${exo.after}</pre>
+            <pre class="readonly">${exo.after}${exo.main ? "/* @main */" + exo.main : ""}</pre>
         </div>
         <button class="run">▶ Lancer</button>
         <button class="test">🧪 Tester</button>
@@ -33,27 +32,54 @@ export function creerUI(exo) {
     const output = s.querySelector(".output");
 
 
+    const code = () => exo.before + editor.getValue() + exo.after;
+
     s.querySelector(".run").onclick = () => {
         output.textContent = "";
-        runExo(exo.before + editor.getValue() + exo.after, exo.main, output);
+        runExo(code(), exo.main, output);
     };
 
     s.querySelector(".test").onclick = () => {
         output.textContent = "";
-        const results = testExo(exo.before + editor.getValue() + exo.after, exo.tests, output);
+        testExo(code(), exo.testable, exo.tests, output);
     };
 
     return s;
 }
 
+// Section affichée à la place d'un exercice qui n'a pas pu être chargé
+function creerErreur(path, erreur) {
+    console.error(`Exercice ${path} :`, erreur);
+    const s = document.createElement("section");
+    s.className = "section_niveau erreur";
+    const titre = document.createElement("h3");
+    titre.textContent = `⚠️ Exercice ${path}`;
+    const message = document.createElement("pre");
+    message.textContent = erreur.message;
+    s.append(titre, message);
+    return s;
+}
+
 export async function chargerExercices() {
-    const conf = await fetch("config.json").then(r=>r.json());
     const zone = document.getElementById("zone-exercices");
-    let com=0;
+    let conf;
+    try {
+        conf = await fetch("config.json").then(r => r.json());
+    } catch (e) {
+        return zone.appendChild(creerErreur("config.json", e));
+    }
+
+    let com = 0;
     for (let path of conf.exercices) {
-        const src = await fetch(path).then(r=>r.text());
-        const exo = parserExercice(src, com); // parserExercice peut rester dans utils ou engine
-        zone.appendChild(creerUI(exo));
+        // Un exercice défectueux ne doit pas empêcher l'affichage des suivants
+        try {
+            const reponse = await fetch(path);
+            if (!reponse.ok) throw new Error(`Fichier introuvable (HTTP ${reponse.status})`);
+            const exo = parserExercice(await reponse.text(), com);
+            zone.appendChild(creerUI(exo));
+        } catch (e) {
+            zone.appendChild(creerErreur(path, e));
+        }
         com++;
     }
 }

@@ -10,13 +10,12 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js"></script>
 
-    <!-- Cyber Gardien CSS & scripts utilitaires -->
+    <!-- Cyber Gardien CSS -->
     <link rel="stylesheet" href="style.css">
-    <script src="confort.js"></script>
 
     <!-- Module principal (UI + moteur via imports) -->
     <script type="module">
-        import { chargerExercices } from './app/ui.js';
+        import { chargerExercices } from './ui.js';
         window.addEventListener("DOMContentLoaded", chargerExercices);
     </script>
 </head>

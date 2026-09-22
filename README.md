@@ -1,273 +1,335 @@
 # 🛡️ CyberGardien
 
-> Plateforme pédagogique d’exercices JavaScript interactifs — 100% navigateur, modulaire, extensible et testable.
+> *Tuer les bugs dans l'œuf.*
+> Plateforme pédagogique d'exercices JavaScript interactifs, 100 % navigateur, sans backend.
 
-CyberGardien permet de créer et exécuter des exercices JavaScript avec :
+L'élève lit un mémo et une consigne, corrige une fonction dans un éditeur de code, puis :
 
-- ✏️ Édition de code étudiant
-- ▶️ Exécution interactive
-- 🧪 Tests automatiques intégrés
-- 🧩 Alias pédagogiques (ex: `mauvaisNombre` au lieu de `isNaN`)
-- 🏗️ Architecture modulaire ES Modules
-- 🧪 Runner de tests navigateur
+- **▶ Lancer** : exécute le programme complet (avec `prompt`, `affiche`…) ;
+- **🧪 Tester** : lance les tests automatiques définis par l'enseignant et affiche le verdict de chaque cas.
 
----
-
-# ✨ Features
-
-- Multi-exercices dynamiques
-- Isolation des sorties par section
-- Extraction automatique de fonction testable
-- Format d’exercice simple basé sur commentaires
-- Tests JSON intégrés
-- Alias pédagogiques injectés automatiquement
-- Aucun backend requis
+Chaque exercice est un simple fichier `.js` annoté : pas de build, pas de base de données.
 
 ---
 
-# 📦 Installation
+## Sommaire
 
-Clone le projet :
-
-    git clone https://github.com/votre-repo/cybergardien.git
-    cd cybergardien
-
-Lancer un serveur local (recommandé pour ES modules) :
-
-    npx serve
-
-ou
-
-    python -m http.server
-
-Puis ouvrir :
-
-    http://localhost:8000
+- [Démarrage rapide](#-démarrage-rapide)
+- [Structure du projet](#-structure-du-projet)
+- [Créer un exercice](#-créer-un-exercice)
+- [Référence du format](#-référence-du-format)
+- [Fonctions disponibles pour l'élève](#-fonctions-disponibles-pour-lélève)
+- [Fonctionnement du moteur](#-fonctionnement-du-moteur)
+- [Tests du moteur](#-tests-du-moteur)
+- [Limites connues](#-limites-connues)
+- [Roadmap](#-roadmap)
+- [Historique](#-historique)
 
 ---
 
-# 🏗️ Structure du projet
+## 🚀 Démarrage rapide
 
-    cybergardien/
-    │
-    ├── app/
-    │   ├── engine.js
-    │   ├── confort.js
-    │   ├── ui.js
-    │   └── utils.js
-    │
-    ├── exercices/
-    │   └── niveau1.js
-    │
-    ├── tests/
-    │   ├── test_extractFunction.js
-    │   └── tests.html
-    │
-    ├── config.json
-    ├── index.html
-    └── README.md
+Les modules ES et le `fetch` des exercices nécessitent un serveur HTTP (l'ouverture en `file://` ne fonctionne pas).
+
+```bash
+git clone https://github.com/sampoujol/cybergardien.git
+cd cybergardien
+python3 -m http.server 8000     # ou : npx serve -l 8000
+```
+
+Puis ouvrir <http://localhost:8000/app/cybergardien.html>.
+
+Seul le dossier `app/` est nécessaire au fonctionnement de l'application : c'est lui qu'il faut publier sur un serveur web (Apache, etc.).
+
+Pour lancer les tests du moteur, voir [Tests du moteur](#-tests-du-moteur).
+
+L'éditeur ([CodeMirror 5](https://codemirror.net/5/)) est chargé depuis un CDN : une connexion Internet est nécessaire.
 
 ---
 
-# 🧠 Philosophie
+## 🏗️ Structure du projet
 
-CyberGardien est conçu pour :
+```
+cybergardien/
+├── app/
+│   ├── cybergardien.html    # Page principale
+│   ├── style.css
+│   ├── config.json          # Liste des exercices à charger
+│   ├── ui.js                # Chargement des exercices et rendu des sections
+│   ├── engine.js            # Extraction de fonction, exécution, tests
+│   ├── utils.js             # Parsing du format d'exercice
+│   ├── confort.js           # Alias pédagogiques + affiche / echoue
+│   └── exercices/
+│       └── niveau1.js
+├── tests/                   # Tests du moteur (node --test)
+│   ├── helpers.js           # Utilitaires partagés par les tests
+│   ├── utils.test.js
+│   ├── confort.test.js
+│   ├── engine.test.js
+│   └── app.test.js
+├── package.json             # Script npm test
+├── CHANGELOG.md             # Historique des versions
+└── README.md
+```
 
-- Simplifier l’apprentissage
-- Encadrer les erreurs
-- Rendre les tests visibles et compréhensibles
-- Séparer moteur / UI / parsing
-- Être extensible sans complexité
-
----
-
-# 🧩 Format d’un exercice
-
-Les exercices sont des fichiers JavaScript annotés.
-
-Ils contiennent :
-
-- Un bloc de métadonnées
-- Une fonction testable
-- Une zone étudiante
-- Un bloc main optionnel
-
----
-
-## 📄 Exemple complet
-
-    /*
-    @title Niveau 1 – On ne mélange pas les choux et les carottes
-
-    @memo
-    Tout ce qui vient d’une saisie est une string.
-    "10" + "5" donne "105".
-    Utilise Number(...) pour faire des calculs.
-
-    @consigne
-    Corrige la fonction calculerTotal pour qu’elle fasse une vraie addition.
-    Si une valeur n’est pas un nombre, appelle echoue("Saisie invalide").
-
-    @tests
-    [
-      { "args": ["10","5"], "attendu": 15 },
-      { "args": ["1","2"], "attendu": 3 },
-      { "args": ["abc","5"], "erreur": true }
-    ]
-
-    @testable calculerTotal
-    */
-
-    function calculerTotal(prix1, prix2) {
-        // @STUDENT-START
-        return prix1 + prix2;
-        // @STUDENT-END
-    }
-
-    /* @main */
-    let p1 = prompt("prix 1");
-    let p2 = prompt("prix 2");
-    let resultat = calculerTotal(p1, p2);
-    affiche(resultat);
+| Module      | Rôle |
+|-------------|------|
+| `ui.js`     | Lit `config.json`, récupère chaque exercice, crée une section (mémo, consigne, éditeur, boutons, sortie). Un exercice défectueux est remplacé par un message d'erreur sans bloquer les suivants. |
+| `utils.js`  | `parserExercice` découpe le fichier en métadonnées / code avant / zone élève / code après / main. |
+| `engine.js` | `chargerFonction`, `runExo` (bouton Lancer), `testExo` (bouton Tester). |
+| `confort.js`| `ALIASES` et `createAliases(output)` qui fournit `affiche` et `echoue` liés à la zone de sortie de l'exercice. |
 
 ---
 
-# 🏷️ Documentation du format
+## ✏️ Créer un exercice
 
-## Métadonnées
+1. Créer un fichier dans `app/exercices/`, par exemple `niveau2.js` (voir le format ci-dessous).
+2. L'ajouter dans `app/config.json` :
 
-Déclarées dans un commentaire initial `/* ... */`.
+   ```json
+   {
+     "exercices": [
+       "exercices/niveau1.js",
+       "exercices/niveau2.js"
+     ]
+   }
+   ```
 
-### @title
-Titre affiché dans l’interface.
+3. Lancer `npm test` : chaque exercice de `config.json` est vérifié automatiquement (voir [Tests du moteur](#-tests-du-moteur)).
+4. Recharger la page. Les exercices s'affichent dans l'ordre de la liste.
 
-### @memo
-Rappel pédagogique.
+Si un exercice est mal formé (tag manquant, JSON invalide, fichier introuvable…), la page affiche à sa place une section rouge avec le message d'erreur ; les autres exercices restent utilisables.
 
-### @consigne
-Objectif de l’exercice.
+### Exemple complet
 
-### @tests
-Tableau JSON décrivant les tests automatiques.
+```js
+/*
+@title Niveau 1 – On ne mélange pas les choux et les carottes
 
-Structure test valide :
+@memo
+Tout ce qui vient d'une saisie est une string.
+"10" + "5" donne "105".
+Utilise Number(...) pour faire des calculs.
 
-    {
-      "args": [val1, val2],
-      "attendu": valeur
-    }
+@consigne
+Corrige la fonction calculerTotal pour qu'elle fasse une vraie addition.
+Si une valeur n'est pas un nombre, appelle echoue("Saisie invalide").
 
-Structure test erreur attendue :
+@tests
+[
+  { "args": ["10","5"], "attendu": 15 },
+  { "args": ["1","2"], "attendu": 3 },
+  { "args": ["abc","5"], "erreur": true }
+]
+@testable calculerTotal
+*/
 
-    {
-      "args": [...],
-      "erreur": true
-    }
-
-### @testable
-Nom de la fonction à tester automatiquement.
-
----
-
-## Zone étudiante
-
-Délimitée par :
-
+function calculerTotal(prix1, prix2) {
     // @STUDENT-START
-    // code modifiable
+    return prix1 + prix2;
     // @STUDENT-END
+}
 
-Seule cette zone est éditable.
-
----
-
-## Bloc @main
-
-Optionnel.
-
-Permet d’exécuter du code interactif via le bouton "Lancer".
-
-Exemple :
-
-    /* @main */
-    affiche(maFonction(5));
+/* @main */
+let p1 = prompt("prix 1");
+let p2 = prompt("prix 2");
+let resultat = calculerTotal(p1, p2);
+affiche(resultat);
+```
 
 ---
 
-# 🧪 Tests automatiques
+## 📚 Référence du format
 
-Le moteur :
+### Métadonnées
 
-1. Extrait la fonction définie par `@testable`
-2. Injecte les alias pédagogiques
-3. Exécute les cas définis dans `@tests`
-4. Compare le résultat attendu
-5. Affiche :
+Placées dans le commentaire `/* ... */` en tête de fichier. Le contenu d'un tag s'étend jusqu'au tag suivant ou jusqu'à `*/`.
 
-- ✅ Succès
-- ⚠️ Mauvais résultat
-- ❌ Erreur inattendue
+| Tag         | Obligatoire | Description |
+|-------------|:-----------:|-------------|
+| `@title`    | oui | Titre de la section. |
+| `@memo`     | oui | Rappel de cours. Les retours à la ligne sont conservés. |
+| `@consigne` | oui | Objectif de l'exercice. Interprété comme du HTML. |
+| `@tests`    | oui | Tableau **JSON strict** des cas de test (voir ci-dessous). |
+| `@testable` | oui | Nom de la fonction testée par le bouton Tester. L'exercice peut contenir d'autres fonctions, y compris fléchées. |
 
----
+> ⚠️ Le caractère `@` termine un tag : ne pas l'utiliser dans le texte d'un mémo ou d'une consigne.
 
-# 🧩 Alias pédagogiques
+### Cas de test
 
-Définis dans `confort.js` :
+```json
+{ "args": ["10", "5"], "attendu": 15 }
+```
 
-    export const ALIASES = {
-        mauvaisNombre: isNaN,
-        nombre: Number
-    };
+La fonction est appelée avec `args` ; le résultat doit être **strictement égal** (`===`) à `attendu`.
 
-Fonctions injectées automatiquement :
+```json
+{ "args": ["abc", "5"], "erreur": true }
+```
 
-- affiche(msg)
-- echoue(msg)
+La fonction doit lever une erreur (typiquement via `echoue(...)`).
 
----
+Comme c'est du JSON, les valeurs `undefined`, `NaN` ou les fonctions ne sont pas exprimables.
 
-# 🧪 Tests internes du moteur
+### Zone élève
 
-Disponible dans :
+```js
+// @STUDENT-START
+// code modifiable par l'élève
+// @STUDENT-END
+```
 
-    tests/tests.html
+Seul ce qui se trouve entre ces deux marqueurs est éditable ; le reste du code est affiché en lecture seule. Les marqueurs doivent être écrits exactement ainsi, et il ne peut y en avoir qu'une paire par fichier.
 
-Permet de tester :
+### Bloc `@main`
 
-- extractTestableFunction
-- runExo
-- testExo
-
----
-
-# 🔒 Sécurité
-
-Le code étudiant est exécuté via :
-
-    new Function(...)
-
-Projet destiné à un usage pédagogique contrôlé.
+Optionnel. Tout ce qui suit `/* @main */` (écrit exactement ainsi) est exécuté par le bouton **▶ Lancer**, après la définition de la fonction. Il est affiché à l'élève en lecture seule, sous la fonction.
 
 ---
 
-# 🚀 Roadmap
+## 🧰 Fonctions disponibles pour l'élève
 
-- [ ] Comparaison profonde d’objets
-- [ ] Mode strict optionnel
-- [ ] Export résultats JSON
+| Nom                  | Équivalent / effet |
+|----------------------|--------------------|
+| `affiche(msg)`       | Écrit une ligne dans la zone de sortie de l'exercice. |
+| `echoue(msg)`        | Affiche `❌ msg` puis lève une erreur. |
+| `nombre(x)`          | `Number(x)` |
+| `mauvaisNombre(x)`   | `isNaN(x)` |
+
+Pour ajouter un alias, compléter `ALIASES` dans `app/confort.js` :
+
+```js
+export const ALIASES = {
+    mauvaisNombre: isNaN,
+    nombre: Number
+};
+```
+
+---
+
+## ⚙️ Fonctionnement du moteur
+
+**▶ Lancer** (`runExo`) :
+
+1. recompose le code : partie avant + code de l'élève + partie après ;
+2. l'exécute suivi du bloc `@main` via `new Function`, les alias étant rendus accessibles par un `with (aliases)` ;
+3. affiche toute erreur sous la forme `💥 Erreur : ...`.
+
+**🧪 Tester** (`testExo`) : exécute le même code, **sans** le bloc `@main`, et récupère la fonction nommée par `@testable` (`chargerFonction`). Le code n'est jamais découpé à la main : c'est le moteur JavaScript du navigateur qui le lit, donc chaînes, commentaires et expressions régulières sont gérés correctement. Chaque cas est ensuite exécuté :
+
+| Affichage | Signification |
+|-----------|---------------|
+| `✅ 10, 5 --> 15`                           | Résultat correct. |
+| `⚠️ 105 retourné au lieu de 15`             | Mauvais résultat. |
+| `✅ Erreur détectée comme attendu`           | Une erreur était attendue et a bien été levée. |
+| `❌ Ces paramètres ne sont pas acceptables` | Une erreur était attendue mais la fonction a renvoyé une valeur. |
+| `❌ Erreur inattendue`                       | La fonction a levé une erreur sur un cas valide. |
+
+---
+
+## 🧪 Tests du moteur
+
+À ne pas confondre avec les tests `@tests` des exercices, qui vérifient le code de l'élève : ceux-ci vérifient **le code de CyberGardien lui-même**.
+
+Tous les tests utilisent le runner intégré à Node.js (`node:test`). Il faut Node.js 22 ou plus, sans aucune dépendance à installer.
+
+### Lancer les tests
+
+Depuis la racine du dépôt :
+
+```bash
+npm test                                     # tous les tests
+node --test tests/engine.test.js             # un seul fichier
+node --test --watch "tests/**/*.test.js"     # relance à chaque sauvegarde
+node --test --test-name-pattern="testExo" "tests/**/*.test.js"   # filtre par nom
+```
+
+Exemple de sortie :
+
+```
+▶ testExo
+  ✔ résultat correct (0.5ms)
+  ✔ mauvais résultat (0.2ms)
+  ✔ les alias sont disponibles dans la fonction testée (0.7ms)
+...
+ℹ tests 57
+ℹ pass 56
+ℹ fail 0
+ℹ todo 1
+```
+
+Le détail de chaque échec (valeur obtenue / attendue) est affiché en fin de rapport. La commande se termine avec un code d'erreur si au moins un test échoue, ce qui permet de l'utiliser telle quelle en intégration continue.
+
+### Organisation
+
+| Fichier                  | Contenu |
+|--------------------------|---------|
+| `tests/utils.test.js`    | Parsing : `extraire`, `collapseTags`, `parserExercice` (dont les messages d'erreur). |
+| `tests/confort.test.js`  | Alias, `affiche` et `echoue`. |
+| `tests/engine.test.js`   | `chargerFonction`, `runExo`, chaque verdict de `testExo`, et un test d'intégration sur `niveau1.js` (le code de départ échoue, une solution correcte réussit). |
+| `tests/app.test.js`      | Fichiers référencés par `cybergardien.html`, validité de chaque exercice listé dans `config.json`. |
+| `tests/helpers.js`       | `fausseSortie()`, `lignes(sortie)`, `lireFichier(chemin)`. |
+
+`ui.js` n'est pas testé : il dépend du DOM et de CodeMirror.
+
+### Écrire un test
+
+Tout fichier `tests/*.test.js` est pris en compte automatiquement.
+
+```js
+import { test, describe } from 'node:test';
+import assert from 'node:assert/strict';
+import { testExo } from '../app/engine.js';
+import { fausseSortie, lignes } from './helpers.js';
+
+describe("testExo", () => {
+    test("résultat correct", () => {
+        const sortie = fausseSortie();          // remplace le <pre class="output">
+        testExo("function add(a, b) { return a + b; }", "add", [{ args: [1, 2], attendu: 3 }], sortie);
+        assert.deepEqual(lignes(sortie), ["✅ 1, 2 --> 3"]);
+    });
+});
+```
+
+- `fausseSortie()` remplace la zone de sortie du navigateur par un objet `{ textContent: "" }`, ce qui permet de tester le moteur sans DOM.
+- Une limite connue, qu'on ne compte pas corriger tout de suite, s'écrit avec `{ todo: "raison" }` : le test est exécuté et affiché, mais ne fait pas échouer la suite.
+
+```js
+test("un @ dans le texte ne coupe pas le tag", { todo: "limite connue du format" }, () => { ... });
+```
+
+### Ajouter un exercice
+
+Les exercices listés dans `app/config.json` sont vérifiés automatiquement par `tests/app.test.js` : le fichier existe, il est lisible par le parseur, ses cas de test sont bien formés et la fonction nommée par `@testable` existe. Lancer `npm test` après chaque nouvel exercice.
+
+---
+
+## ⚠️ Limites connues
+
+- **Sécurité** : le code est exécuté tel quel dans la page via `new Function`. Aucun bac à sable : réservé à un usage pédagogique en environnement maîtrisé.
+- **Boucles infinies** : un `while (true)` dans le code de l'élève gèle l'onglet.
+- **Code hors `@main` exécuté par Tester** : tout le code de l'exercice (hors `@main`) est exécuté avant les tests ; il ne doit contenir que des déclarations.
+- **Comparaison stricte** : les résultats de type objet ou tableau ne peuvent pas être comparés.
+- **Mode strict impossible** en l'état, à cause de l'utilisation de `with`.
+
+---
+
+## 🗺️ Roadmap
+
+- [ ] Protection contre les boucles infinies (Web Worker)
+- [ ] Comparaison profonde d'objets et de tableaux
+- [ ] Export des résultats en JSON
 - [ ] Support TypeScript
 - [ ] Intégration CI
 
 ---
 
-# 📄 Licence
+## 📝 Historique
 
-Projet pédagogique — libre d’adaptation.
+Les évolutions de chaque version sont décrites dans [CHANGELOG.md](CHANGELOG.md).
 
 ---
 
-# 🛡️ CyberGardien
+## 📄 Licence
 
-Apprendre à coder.  
-Comprendre ses erreurs.  
-Devenir autonome.
+Projet pédagogique, libre d'adaptation.

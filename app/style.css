@@ -101,3 +101,13 @@ button:hover {
     font-size: 0.9em;
     overflow: auto;
 }
+
+.section_niveau.erreur {
+    border-left-color: #f44336;
+}
+
+.section_niveau.erreur pre {
+    white-space: pre-wrap;
+    color: #b71c1c;
+    margin: 0;
+}

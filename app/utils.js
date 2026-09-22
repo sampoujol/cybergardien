@@ -11,25 +11,31 @@ export function collapseTags(texte) {
     return sansTags.replace(/\n\s*\n\s*\n+/g, '\n\n');
 }
 
-export function extraireSignature(code) {
-    const m = code.match(/function\s+(\w+)\s*\(([^)]*)\)/);
-    if (!m) throw new Error("Impossible d'extraire la signature de la fonction");
-    return { nom: m[1], params: m[2].split(",").map(p=>p.trim()).filter(p=>p) };
+function lireTests(json) {
+    try {
+        return JSON.parse(json);
+    } catch (e) {
+        throw new Error(`@tests n'est pas du JSON valide : ${e.message}`);
+    }
 }
 
 export function parserExercice(src, com) {
     const beforeSplit = src.split("// @STUDENT-START");
+    if (beforeSplit.length !== 2) throw new Error("Il faut exactement un marqueur // @STUDENT-START");
     const afterSplit = beforeSplit[1].split("// @STUDENT-END");
+    if (afterSplit.length !== 2) throw new Error("Il faut exactement un marqueur // @STUDENT-END");
+    const mainSplit = afterSplit[1].split("/* @main */");
 
     return {
         num: com,
         title: extraire(src, "title"),
         memo: extraire(src, "memo"),
         consigne: extraire(src, "consigne"),
-        tests: JSON.parse(extraire(src, "tests")),
+        tests: lireTests(extraire(src, "tests")),
+        testable: extraire(src, "testable"),
         before: beforeSplit[0],
         student: afterSplit[0],
-        after: afterSplit[1],
-        main: src.split("/* @main */")[1] || ""
+        after: mainSplit[0],
+        main: mainSplit[1] || ""
     };
 }
