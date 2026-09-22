@@ -2,7 +2,9 @@ import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { testExo } from '../app/engine.js';
 import { parserExercice } from '../app/utils.js';
-import { fausseSortie, lireFichier } from './helpers.js';
+import { fausseSortie, lireFichier, chargerSql } from './helpers.js';
+
+await chargerSql();
 
 // Solution de référence de chaque exercice : le contenu attendu de la zone élève
 const SOLUTIONS = {
@@ -34,7 +36,14 @@ const SOLUTIONS = {
             if (note < 0 || note > 20) echoue("Notes invalides");
             somme = somme + note;
         }
-        return somme / notes.length;`
+        return somme / notes.length;`,
+
+    "exercices/niveau5.js": `
+        const lignes = requetePreparee(
+            "SELECT * FROM utilisateurs WHERE login = ? AND mdp = ?",
+            [identifiant, motDePasse]
+        );
+        return lignes.length > 0;`
 };
 
 const { exercices } = JSON.parse(lireFichier("app/config.json"));
@@ -43,7 +52,7 @@ for (const chemin of exercices) {
     describe(chemin, () => {
         const exo = parserExercice(lireFichier(`app/${chemin}`), 0);
         const tester = codeEleve =>
-            testExo(exo.before + codeEleve + exo.after, exo.testable, exo.tests, fausseSortie());
+            testExo(exo.before + codeEleve + exo.after, exo.testable, exo.tests, fausseSortie(), exo.sql);
 
         test("a une solution de référence", () => {
             assert.ok(chemin in SOLUTIONS, `ajouter la solution de ${chemin} dans SOLUTIONS`);

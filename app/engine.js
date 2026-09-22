@@ -1,4 +1,5 @@
 import { createAliases, Echec } from './confort.js';
+import { creerBase } from './sgbd.js';
 
 // Exécute du code avec les alias en portée, puis la suite éventuelle (ex: un return)
 function executer(code, aliases, suite = "") {
@@ -19,15 +20,23 @@ export function chargerFonction(code, nom, aliases) {
     return fn;
 }
 
-// Exécute un exercice complet (avec main) dans une zone output spécifique
-export function runExo(code, main = "", outputElement = null) {
+// Exécute un exercice complet (avec main) dans une zone output spécifique.
+// Si l'exercice déclare une base (@sql), chaque requête exécutée est affichée.
+export function runExo(code, main = "", outputElement = null, sql = null) {
     const aliases = createAliases(outputElement);
+    let base = null;
 
     try {
+        if (sql) {
+            base = creerBase(sql, aliases.affiche);
+            Object.assign(aliases, base.aliases);
+        }
         executer(code + "\n" + main, aliases);
     } catch (e) {
         if (e instanceof Echec) aliases.affiche(`❌ ${e.message}`);
         else aliases.affiche(`💥 Erreur : ${e.message}`);
+    } finally {
+        base?.fermer();
     }
 }
 
@@ -64,11 +73,12 @@ function juger(f, nom, t) {
 
 // Exécute les tests unitaires d'un exercice sur la fonction nommée, affiche
 // un verdict par cas puis le bilan. Renvoie un résultat par cas : { args, ok, message }
-export function testExo(code, nom, tests, outputElement = null) {
+export function testExo(code, nom, tests, outputElement = null, sql = null) {
     const aliases = createAliases(outputElement);
 
     let f;
     try {
+        if (sql) creerBase(sql).fermer();   // vérifie le script avant de lancer les cas
         f = chargerFonction(code, nom, aliases);
     } catch (e) {
         aliases.affiche("💥 " + e.message);
@@ -77,7 +87,12 @@ export function testExo(code, nom, tests, outputElement = null) {
 
     const resultats = [];
     for (const t of tests) {
+        // Base neuve pour chaque cas : une injection destructrice ne fausse pas les suivants.
+        // with (aliases) lit les alias à chaque appel, la fonction utilise donc la nouvelle base.
+        const base = sql ? creerBase(sql) : null;
+        if (base) Object.assign(aliases, base.aliases);
         const { ok, message } = juger(f, nom, t);
+        base?.fermer();
         aliases.affiche(message);
         resultats.push({ args: t.args, ok, message });
     }

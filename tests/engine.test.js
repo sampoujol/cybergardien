@@ -2,7 +2,11 @@ import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { chargerFonction, runExo, testExo } from '../app/engine.js';
 import { createAliases } from '../app/confort.js';
-import { fausseSortie, lignes } from './helpers.js';
+import { fausseSortie, lignes, chargerSql } from './helpers.js';
+
+await chargerSql();
+
+const SCRIPT = "CREATE TABLE t (nom TEXT); INSERT INTO t VALUES ('a'); INSERT INTO t VALUES ('b');";
 
 describe("chargerFonction", () => {
     const charger = (code, nom) => chargerFonction(code, nom, createAliases(fausseSortie()));
@@ -241,5 +245,55 @@ describe("testExo", () => {
         const sortie = fausseSortie();
         testExo('function f(a) { affiche("debug " + a); return a; }', "f", [{ args: [7], attendu: 7 }], sortie);
         assert.deepEqual(verdicts(sortie), ["debug 7", "✅ f(7) → 7"]);
+    });
+});
+
+describe("exercices avec base de données (@sql)", () => {
+    const compter = 'function compter(filtre) { return requete("SELECT * FROM t WHERE nom = \'" + filtre + "\'").length; }';
+
+    test("sans @sql, requete explique qu'il n'y a pas de base", () => {
+        const sortie = fausseSortie();
+        testExo(compter, "compter", [{ args: ["a"], attendu: 1 }], sortie);
+        assert.match(lignes(sortie)[0], /Cet exercice n'a pas de base de données/);
+    });
+
+    test("testExo interroge la base", () => {
+        const resultats = testExo(compter, "compter", [
+            { args: ["a"], attendu: 1 },
+            { args: ["' OR '1'='1"], attendu: 2 }
+        ], fausseSortie(), SCRIPT);
+        assert.deepEqual(resultats.map(r => r.ok), [true, true]);
+    });
+
+    test("chaque cas repart d'une base neuve", () => {
+        const detruire = 'function f(x) { requete("DELETE FROM t"); return requete("SELECT * FROM t").length; }';
+        const resultats = testExo(detruire, "f", [{ args: [1], attendu: 0 }, { args: [2], attendu: 0 }], fausseSortie(), SCRIPT);
+        assert.deepEqual(resultats.map(r => r.ok), [true, true]);
+        const avant = testExo(compter, "compter", [{ args: ["a"], attendu: 1 }], fausseSortie(), SCRIPT);
+        assert.equal(avant[0].ok, true);
+    });
+
+    test("testExo n'affiche pas les requêtes", () => {
+        const sortie = fausseSortie();
+        testExo(compter, "compter", [{ args: ["a"], attendu: 1 }], sortie, SCRIPT);
+        assert.ok(!sortie.textContent.includes("🗄️"));
+    });
+
+    test("script @sql invalide", () => {
+        const sortie = fausseSortie();
+        assert.deepEqual(testExo(compter, "compter", [{ args: ["a"], attendu: 1 }], sortie, "CREATE TABLE ("), []);
+        assert.match(lignes(sortie)[0], /^💥 Script @sql invalide/);
+    });
+
+    test("runExo affiche chaque requête exécutée", () => {
+        const sortie = fausseSortie();
+        runExo(compter, 'affiche(compter("\' OR \'1\'=\'1"));', sortie, SCRIPT);
+        assert.deepEqual(lignes(sortie), ["🗄️ SELECT * FROM t WHERE nom = '' OR '1'='1'", "2"]);
+    });
+
+    test("runExo signale une erreur SQL", () => {
+        const sortie = fausseSortie();
+        runExo(compter, 'compter("o\'brien");', sortie, SCRIPT);
+        assert.match(lignes(sortie).at(-1), /^💥 Erreur : .*syntax error/);
     });
 });

@@ -4,7 +4,10 @@ import { existsSync } from 'node:fs';
 import { parserExercice } from '../app/utils.js';
 import { chargerFonction } from '../app/engine.js';
 import { createAliases } from '../app/confort.js';
-import { fausseSortie, lireFichier } from './helpers.js';
+import { fausseSortie, lireFichier, chargerSql } from './helpers.js';
+import { decrireBase } from '../app/sgbd.js';
+
+await chargerSql();
 
 const APP = new URL("../app/", import.meta.url);
 
@@ -33,6 +36,14 @@ describe("cybergardien.html", () => {
     });
 });
 
+describe("sql.js (app/vendor)", () => {
+    test("les fichiers chargés par ui.js existent", () => {
+        for (const f of ["sql-wasm.js", "sql-wasm.wasm"]) {
+            assert.ok(existsSync(new URL(`vendor/sql.js/${f}`, APP)), f);
+        }
+    });
+});
+
 describe("config.json", () => {
     const { exercices } = JSON.parse(lireFichier("app/config.json"));
 
@@ -53,6 +64,11 @@ describe("config.json", () => {
                     assert.ok(Array.isArray(t.args), "args doit être un tableau");
                     assert.ok("attendu" in t || t.erreur === true, "attendu ou erreur requis");
                 }
+            });
+
+            test("le script @sql éventuel est valide", () => {
+                const exo = parserExercice(lireFichier(`app/${chemin}`), 0);
+                if (exo.sql) assert.ok(decrireBase(exo.sql).length > 0, "le script ne crée aucune table");
             });
 
             test("la fonction @testable existe", () => {

@@ -1,6 +1,7 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
-import { extraire, collapseTags, parserExercice } from '../app/utils.js';
+import { extraire, collapseTags, parserExercice, echapperHtml, surlignerAliases } from '../app/utils.js';
+import { AIDE } from '../app/confort.js';
 import { lireFichier } from './helpers.js';
 
 const niveau1 = lireFichier("app/exercices/niveau1.js");
@@ -30,6 +31,14 @@ Ligne 2
 
     test("lève une erreur si le tag est absent", () => {
         assert.throws(() => extraire(src, "consigne"), /Tag @consigne introuvable/);
+    });
+
+    test("tag optionnel absent : null", () => {
+        assert.equal(extraire(src, "sql", false), null);
+    });
+
+    test("ne confond pas un tag avec un tag plus long", () => {
+        assert.equal(extraire("/*\n@testable f\n@test x\n*/", "test"), "x");
     });
 
     test("un @ dans le texte ne coupe pas le tag", { todo: "limite connue du format" }, () => {
@@ -105,6 +114,15 @@ describe("parserExercice", () => {
         assert.throws(() => parserExercice(sansFin, 0), /@STUDENT-END/);
     });
 
+    test("sql vaut null sans tag @sql", () => {
+        assert.equal(exo.sql, null);
+    });
+
+    test("lit le script @sql", () => {
+        const avecSql = niveau1.replace("@testable", "@sql\nCREATE TABLE t (x);\n\n@testable");
+        assert.equal(parserExercice(avecSql, 0).sql, "CREATE TABLE t (x);");
+    });
+
     test("lève une erreur sans @testable", () => {
         const sansTestable = niveau1.replace("@testable calculerTotal", "");
         assert.throws(() => parserExercice(sansTestable, 0), /Tag @testable introuvable/);
@@ -113,5 +131,40 @@ describe("parserExercice", () => {
     test("signale un JSON de tests invalide", () => {
         const jsonCasse = niveau1.replace('"attendu": 15 },', '"attendu": 15 }');
         assert.throws(() => parserExercice(jsonCasse, 0), /@tests n'est pas du JSON valide/);
+    });
+});
+
+describe("echapperHtml", () => {
+    test("échappe les caractères spéciaux", () => {
+        assert.equal(echapperHtml('if (a < b && c > "d")'), "if (a &lt; b &amp;&amp; c &gt; &quot;d&quot;)");
+    });
+});
+
+describe("surlignerAliases", () => {
+    const span = nom => `<span class="alias" title="${echapperHtml(AIDE[nom][1])}">${nom}</span>`;
+
+    test("entoure les appels d'alias", () => {
+        assert.equal(surlignerAliases('affiche(nombre(x));', AIDE), `${span("affiche")}(${span("nombre")}(x));`);
+    });
+
+    test("accepte un espace avant la parenthèse", () => {
+        assert.equal(surlignerAliases("estEntier (x)", AIDE), `${span("estEntier")} (x)`);
+    });
+
+    test("ignore les mots ordinaires sans parenthèse", () => {
+        assert.equal(surlignerAliases("// un nombre entier", AIDE), "// un nombre entier");
+    });
+
+    test("ignore les noms qui contiennent un alias", () => {
+        assert.equal(surlignerAliases("unnombre(x); obj.nombre(x); $affiche(x)", AIDE),
+            "unnombre(x); obj.nombre(x); $affiche(x)");
+    });
+
+    test("distingue mauvaisNombre de nombre", () => {
+        assert.equal(surlignerAliases("mauvaisNombre(x)", AIDE), `${span("mauvaisNombre")}(x)`);
+    });
+
+    test("échappe le code", () => {
+        assert.equal(surlignerAliases("if (a < 4) affiche(a);", AIDE), `if (a &lt; 4) ${span("affiche")}(a);`);
     });
 });

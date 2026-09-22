@@ -7,6 +7,11 @@ Le format s'inspire de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) 
 ## [Non publié]
 
 ### Ajouté
+- Exercices avec base de données : tag `@sql`, SQLite en WebAssembly ([sql.js](https://sql.js.org) 1.14.2, copié dans `app/vendor/sql.js/`), chargé seulement si un exercice en a besoin.
+- Alias `requete(sql)` et `requetePreparee(sql, valeurs)` ; base neuve pour chaque cas de test ; Lancer affiche chaque requête exécutée ; les tables sont affichées à l'élève.
+- Niveau 5, « Le boss de fin : la porte dérobée » : injection SQL sur un formulaire de connexion, à corriger avec une requête préparée.
+- Boîte à outils en haut de la page, listant les fonctions disponibles pour l'élève avec leur description (`AIDE` dans `confort.js`).
+- Les appels d'alias sont colorés en orange dans le code, l'éditeur, le mémo et la consigne, avec leur description au survol.
 - Trois nouveaux exercices : `niveau2.js` (bornes d'un choix de menu), `niveau3.js` (format d'un code PIN), `niveau4.js` (moyenne d'une liste : liste vide et notes hors limites).
 - Alias `estEntier` (`Number.isInteger`).
 - Bilan en fin de tests : `🎉 Bilan : 8/8 tests réussis` ou `📊 Bilan : 5/8 tests réussis`.
@@ -34,6 +39,7 @@ Le format s'inspire de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) 
 - README réécrit : démarrage rapide, création d'un exercice, référence du format, fonctionnement du moteur, tests, limites connues.
 
 ### Corrigé
+- Le code affiché (parties en lecture seule et zone élève) est échappé : un `<` ou un `&` dans le code ne casse plus l'affichage.
 - La page ne chargeait aucun exercice : l'import `./app/ui.js` pointait vers un fichier inexistant.
 - Erreur de syntaxe au chargement : `confort.js` était inclus comme script classique alors qu'il contient un `export`.
 - Les alias (`nombre`, `echoue`…) n'étaient pas disponibles pendant les tests : une solution correcte échouait, et un cas d'erreur attendu ne passait que par accident.

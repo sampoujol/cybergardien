@@ -18,6 +18,7 @@ Chaque exercice est un simple fichier `.js` annoté : pas de build, pas de base 
 - [Structure du projet](#-structure-du-projet)
 - [Créer un exercice](#-créer-un-exercice)
 - [Référence du format](#-référence-du-format)
+- [Exercices avec base de données](#-exercices-avec-base-de-données)
 - [Fonctions disponibles pour l'élève](#-fonctions-disponibles-pour-lélève)
 - [Fonctionnement du moteur](#-fonctionnement-du-moteur)
 - [Tests du moteur](#-tests-du-moteur)
@@ -59,16 +60,20 @@ cybergardien/
 │   ├── engine.js            # Extraction de fonction, exécution, tests
 │   ├── utils.js             # Parsing du format d'exercice
 │   ├── confort.js           # Alias pédagogiques + affiche / echoue
+│   ├── sgbd.js              # Base SQLite des exercices @sql
+│   ├── vendor/sql.js/       # SQLite en WebAssembly (sql.js 1.14.2, MIT)
 │   └── exercices/
 │       ├── niveau1.js       # Conversion des saisies
 │       ├── niveau2.js       # Vérification des bornes (menu)
 │       ├── niveau3.js       # Validation de format (code PIN)
-│       └── niveau4.js       # Cas limites sur une liste (moyenne)
+│       ├── niveau4.js       # Cas limites sur une liste (moyenne)
+│       └── niveau5.js       # Injection SQL (connexion)
 ├── tests/                   # Tests du moteur (node --test)
 │   ├── helpers.js           # Utilitaires partagés par les tests
 │   ├── utils.test.js
 │   ├── confort.test.js
 │   ├── engine.test.js
+│   ├── sgbd.test.js
 │   ├── app.test.js
 │   └── exercices.test.js    # Solutions de référence des exercices
 ├── package.json             # Script npm test
@@ -81,7 +86,8 @@ cybergardien/
 | `ui.js`     | Lit `config.json`, récupère chaque exercice, crée une section (mémo, consigne, éditeur, boutons, sortie). Un exercice défectueux est remplacé par un message d'erreur sans bloquer les suivants. |
 | `utils.js`  | `parserExercice` découpe le fichier en métadonnées / code avant / zone élève / code après / main. |
 | `engine.js` | `chargerFonction`, `runExo` (bouton Lancer), `testExo` (bouton Tester). |
-| `confort.js`| `ALIASES` et `createAliases(output)` qui fournit `affiche` et `echoue` liés à la zone de sortie de l'exercice. |
+| `confort.js`| `ALIASES`, `AIDE` et `createAliases(output)` qui fournit `affiche` et `echoue` liés à la zone de sortie de l'exercice. |
+| `sgbd.js`   | `creerBase(script)` crée une base SQLite en mémoire et fournit `requete` / `requetePreparee` ; `decrireBase(script)` liste les tables pour les afficher. |
 
 ---
 
@@ -157,6 +163,7 @@ Placées dans le commentaire `/* ... */` en tête de fichier. Le contenu d'un ta
 | `@consigne` | oui | Objectif de l'exercice. Interprété comme du HTML. |
 | `@tests`    | oui | Tableau **JSON strict** des cas de test (voir ci-dessous). |
 | `@testable` | oui | Nom de la fonction testée par le bouton Tester. L'exercice peut contenir d'autres fonctions, y compris fléchées. |
+| `@sql`      | non | Script SQL (SQLite) qui crée et remplit la base de l'exercice. Voir [Exercices avec base de données](#-exercices-avec-base-de-données). |
 
 > ⚠️ Le caractère `@` termine un tag : ne pas l'utiliser dans le texte d'un mémo ou d'une consigne.
 
@@ -192,6 +199,35 @@ Optionnel. Tout ce qui suit `/* @main */` (écrit exactement ainsi) est exécut�
 
 ---
 
+## 🗄️ Exercices avec base de données
+
+Un exercice peut déclarer une base SQLite avec le tag `@sql`. SQLite tourne dans le navigateur grâce à [sql.js](https://sql.js.org) (WebAssembly) : la base est en mémoire, rien ne sort de la page, et l'élève peut la « casser » sans conséquence.
+
+```js
+/*
+@title ...
+@sql
+CREATE TABLE utilisateurs (login TEXT, mdp TEXT);
+INSERT INTO utilisateurs VALUES ('alice', 'secret');
+INSERT INTO utilisateurs VALUES ('o''brien', 'trèfle');
+
+@tests
+...
+*/
+```
+
+- Les tables et leur contenu sont affichés à l'élève dans un encadré **🗄️ Base de données**.
+- L'élève interroge la base avec `requete(sql)` (texte exécuté tel quel, donc vulnérable à l'injection) ou `requetePreparee(sql, valeurs)` (valeurs liées aux `?`, sans risque).
+- **Tester** crée une base neuve pour chaque cas : une requête destructrice (`DELETE`, `DROP TABLE`) ne fausse pas les cas suivants.
+- **Lancer** affiche chaque requête réellement exécutée (`🗄️ SELECT ... WHERE login = '' OR '1'='1'`) : l'élève voit l'injection se produire.
+- sql.js (~700 Ko) n'est chargé que si au moins un exercice déclare `@sql`.
+
+Contraintes d'écriture du script : pas de `@` (il terminerait le tag) ni de ligne vide (elle perturberait le masquage des métadonnées dans le code affiché).
+
+sql.js est copié dans `app/vendor/sql.js/` plutôt que chargé depuis un CDN : la page et les tests utilisent le même fichier, et l'application fonctionne sur un réseau qui filtre les CDN. Un serveur qui ne connaît pas le type MIME `application/wasm` fonctionne quand même (chargement un peu plus lent).
+
+---
+
 ## 🧰 Fonctions disponibles pour l'élève
 
 | Nom                  | Équivalent / effet |
@@ -202,7 +238,12 @@ Optionnel. Tout ce qui suit `/* @main */` (écrit exactement ainsi) est exécut�
 | `mauvaisNombre(x)`   | `isNaN(x)` |
 | `estEntier(x)`       | `Number.isInteger(x)` |
 
-Pour ajouter un alias, compléter `ALIASES` dans `app/confort.js` :
+Dans la page, ces fonctions sont mises en évidence :
+
+- une **🧰 Boîte à outils** en haut de page les liste avec leur description ;
+- leurs appels apparaissent **en orange** dans le code, l'éditeur, le mémo et la consigne, avec la description au survol. Seuls les appels (`nombre(`) sont colorés, pas le mot « nombre » dans une phrase.
+
+Pour ajouter un alias, compléter `ALIASES` **et** `AIDE` dans `app/confort.js` :
 
 ```js
 export const ALIASES = {
@@ -210,7 +251,14 @@ export const ALIASES = {
     nombre: Number,
     estEntier: Number.isInteger
 };
+
+export const AIDE = {
+    // ...
+    estEntier: ["estEntier(x)", "Vrai si x est un nombre entier : estEntier(3) donne true, estEntier(2.5) donne false."]
+};
 ```
+
+`npm test` échoue si une fonction de `ALIASES` n'a pas d'entrée dans `AIDE`.
 
 ---
 
@@ -279,12 +327,15 @@ Le détail de chaque échec (valeur obtenue / attendue) est affiché en fin de r
 |--------------------------|---------|
 | `tests/utils.test.js`    | Parsing : `extraire`, `collapseTags`, `parserExercice` (dont les messages d'erreur). |
 | `tests/confort.test.js`  | Alias, `affiche` et `echoue`. |
-| `tests/engine.test.js`   | `chargerFonction`, `runExo`, chaque verdict de `testExo` et les résultats qu'il renvoie. |
-| `tests/app.test.js`      | Fichiers référencés par `cybergardien.html`, validité de chaque exercice listé dans `config.json`. |
+| `tests/engine.test.js`   | `chargerFonction`, `runExo`, chaque verdict de `testExo` et les résultats qu'il renvoie, exercices avec base. |
+| `tests/sgbd.test.js`     | `creerBase` (requêtes, injection, requêtes préparées, isolation, journal) et `decrireBase`. |
+| `tests/app.test.js`      | Fichiers référencés par `cybergardien.html` et présence de sql.js, validité de chaque exercice listé dans `config.json` (y compris son script `@sql`). |
 | `tests/exercices.test.js`| Pour chaque exercice : une solution de référence existe, le code de départ échoue au moins un test, la solution les passe tous. |
-| `tests/helpers.js`       | `fausseSortie()`, `lignes(sortie)`, `lireFichier(chemin)`. |
+| `tests/helpers.js`       | `fausseSortie()`, `lignes(sortie)`, `lireFichier(chemin)`, `chargerSql()` (charge sql.js sous Node). |
 
 `ui.js` n'est pas testé : il dépend du DOM et de CodeMirror.
+
+Un fichier de test qui utilise une base commence par `await chargerSql();`.
 
 ### Écrire un test
 

@@ -111,3 +111,83 @@ button:hover {
     color: #b71c1c;
     margin: 0;
 }
+
+/* Alias pédagogiques : même couleur partout (boîte à outils, code, éditeur) */
+.alias,
+.cm-s-dracula span.cm-alias {
+    color: #ffb86c;
+    font-weight: bold;
+    cursor: help;
+}
+
+.boite-outils {
+    background: #fff8ef;
+    border: 2px solid #ffb86c;
+    border-radius: 12px;
+    padding: 16px 24px;
+    margin-bottom: 30px;
+}
+
+.boite-outils h3 {
+    margin-top: 0;
+}
+
+.boite-outils p .alias,
+.boite-outils code.alias,
+.consigne .alias {
+    color: #b35c00;
+}
+
+.boite-outils dl {
+    display: grid;
+    grid-template-columns: max-content 1fr;
+    gap: 6px 16px;
+    margin: 0;
+}
+
+.boite-outils dt,
+.boite-outils dd {
+    margin: 0;
+}
+
+@media (max-width: 600px) {
+    .boite-outils dl {
+        grid-template-columns: 1fr;
+    }
+
+    .boite-outils dd {
+        margin-bottom: 8px;
+    }
+}
+
+.base {
+    background: #f8f9fa;
+    border-left: 4px solid #6272a4;
+    padding: 10px 14px;
+    margin-bottom: 15px;
+    font-size: 0.95em;
+    overflow-x: auto;
+}
+
+.base table {
+    border-collapse: collapse;
+    margin-top: 8px;
+    font-family: monospace;
+}
+
+.base caption {
+    text-align: left;
+    font-weight: bold;
+    padding-bottom: 4px;
+}
+
+.base th,
+.base td {
+    border: 1px solid #ccc;
+    padding: 3px 10px;
+    text-align: left;
+}
+
+.base th {
+    background: #e8eaf0;
+}

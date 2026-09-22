@@ -1,6 +1,6 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
-import { ALIASES, Echec, createAliases } from '../app/confort.js';
+import { ALIASES, AIDE, Echec, createAliases } from '../app/confort.js';
 import { fausseSortie } from './helpers.js';
 
 describe("ALIASES", () => {
@@ -47,5 +47,26 @@ describe("createAliases", () => {
         createAliases(s2).affiche("deux");
         assert.equal(s1.textContent, "un\n");
         assert.equal(s2.textContent, "deux\n");
+    });
+});
+
+describe("AIDE", () => {
+    test("décrit exactement les fonctions fournies à l'élève", () => {
+        assert.deepEqual(Object.keys(AIDE).sort(), Object.keys(createAliases(fausseSortie())).sort());
+    });
+
+    test("chaque entrée a une utilisation et une description", () => {
+        for (const [nom, [usage, role]] of Object.entries(AIDE)) {
+            assert.ok(usage.startsWith(nom + "("), nom);
+            assert.ok(role.length > 0, nom);
+        }
+    });
+});
+
+describe("alias SQL sans base", () => {
+    test("requete et requetePreparee expliquent l'absence de base", () => {
+        const a = createAliases(fausseSortie());
+        assert.throws(() => a.requete("SELECT 1"), /n'a pas de base de données/);
+        assert.throws(() => a.requetePreparee("SELECT 1", []), /n'a pas de base de données/);
     });
 });
